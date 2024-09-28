@@ -11,7 +11,7 @@ import wikipedia
 import webbrowser
 import os
 import pyjokes
-#import winshell
+import winshell
 import feedparser
 import smtplib
 import ctypes
@@ -23,13 +23,26 @@ from twilio.rest import Client
 from clint.textui import progress
 from ecapture import ecapture as ec
 from bs4 import BeautifulSoup
-#import win32com.client as wincl
+import win32com.client as wincl
 from urllib.request import urlopen
+import google.generativeai as Genai
+
+api_key = ""
+Genai.configure(api_key=api_key)
+
+model = Genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    generation_config=Genai.GenerationConfig(
+        max_output_tokens=2048,
+        temperature=0.7,
+    ),
+)
 
 
 engine = pyttsx3.init('sapi5')
 voices = engine.getProperty('voices')
 engine.setProperty('voice',voices[0].id)
+assistantname = "Wall-E 1 point o"
 
 def speak(audio):
     engine.say(audio)
@@ -38,32 +51,51 @@ def speak(audio):
 def wishMe():
     hour = int(datetime.datetime.now().hour)
     if hour>=0 and hour<12:
-        speak("Good morning sir!")
+        print("Good morning ")
+        speak("Good morning ")
     elif hour>12 and hour<18:
-        speak("Good Afternoon sir!")
+        speak("Good Afternoon ")
+        print("Good Afternoon ")
     else:
-        speak("Good Evening sir!")
+        speak("Good Evening ")
+        print("Good Evening ")
     
-    assistantname = "Wall-E 1 point o"
+    
     speak("I am your Assistant")
+    print("I am your Assistant")
     speak(assistantname)
+    print(assistantname)
+
+def loadusername():
+    try:
+        with open('username.txt',"r")as file:
+            uname = file.read().strip()
+            return uname
+    except FileNotFoundError:
+         return  None
+
+def saveusername(uname):
+    with open('username.txt',"w")as file:
+        file.write(uname)
+
 
 def username():
-    speak("What should i call you sir!")
-    uname = takeCommand()
-    speak(uname)
-    columns = shutil.get_terminal_size().columns
-
     
-    print("Welcome",uname.center(columns))
-    speak("how can i help you")    
+    speak("What should i call you")
+    print("What should i call you")
+    uname = takeCommand()
+    speak(f"Hello{uname}")
+    print("Welcome",uname)
+    speak("how can i help you")  
+    saveusername(uname)
+    return  uname  
 
 def takeCommand():
     r = sr.Recognizer()
 
     with sr.Microphone() as source:
         print("Listening...")
-        r.pause_threshold = 1
+        r.pause_threshold = 2
         audio = r.listen(source)
 
         try:
@@ -83,8 +115,8 @@ def sendemail(to,content):
     server.ehlo()
     server.starttls()
 
-    server.login('codeashwin03@gmail.com','codeash03!')
-    server.sendmail('codeashwin03@gmail.com',to,content)
+    server.login('example@gmail.com','password')
+    server.sendmail('togmail@gmail.com',to,content)
     server.close()
 
 if __name__ == '__main__':
@@ -94,7 +126,13 @@ if __name__ == '__main__':
         any execution of this Python File'''
     clear()
     wishMe()
-    username()
+    uname = loadusername()
+    if uname is None:
+        uname = username()
+    else:
+        print(f"Welcome back,{uname}")
+        speak(f"Welcome back,{uname}")
+        speak("How can i help you")
 
     while True:
         query = takeCommand().lower()
@@ -111,11 +149,13 @@ if __name__ == '__main__':
             print("opening youtube\n")
             speak("opening youtube")
             webbrowser.open("youtube.com")
+            exit()
 
         elif 'open google' in query:
             print("opening google")
             speak("opening google")
             webbrowser.open("google.com")
+            exit()
 
         elif 'play music' in query or 'play song' in query:
             speak("playing music")
@@ -135,7 +175,7 @@ if __name__ == '__main__':
             try:
                 speak("what should i mail")
                 content = takeCommand()
-                to = 'ashwins1609712@gmail.com'
+                to = 'toemail@gmail.com'
                 sendemail(to,content)
                 speak("email has been sent")
             except Exception as e:
@@ -170,7 +210,7 @@ if __name__ == '__main__':
             speak(pyjokes.get_joke())
 
         elif 'calculate' in query :
-            app_id = "YJE2L3-LXYQKKJGWA"
+            app_id = ""
             client = wolframalpha.Client(app_id)
             indx = query.lower().split().index('calculate')
             query = query.split()[indx + 1:]
@@ -188,3 +228,41 @@ if __name__ == '__main__':
 
             power = r"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\PowerPoint.lnk"
             os.startfile(power)
+
+        elif 'change background' in query:
+            ctypes.windll.user32.SystemParametersInfoW(20,0, "Location of wallpaper",0)
+
+        elif 'lock windows'in query:
+            speak('locking windows')
+            print('locking windows')
+            ctypes.windll.user32.LockWorkStation()
+            exit()
+
+        elif "restart" in query:
+            print("restarting")
+            speak("restarting")
+            subprocess.call(["shutdown", "/r"])
+        
+        elif 'shutdown windows' in query:
+            speak('are you sure you want me to shut down windows')
+            print('are you sure you want me to shut down windows')
+            print('if you are sure say |SHUTDOWN WINDOWS| Again')
+
+            query = takeCommand().lower()
+
+            if 'shutdown windows' in query:
+                speak('shutting down windows')
+                print('shutting down windows')
+                subprocess.call('shutdown /p /f')
+            else:
+                print('No conformation provided!')
+                speak('No conformation provided!')
+
+        elif 'camera' in query or 'take a photo' in query or 'take picture' in query:
+            ec.capture(0,"wall e camera","walleimg.png")
+ 
+        else:
+            response = model.generate_content(query)
+            ans = response.text
+            print (ans)
+            speak(ans)
